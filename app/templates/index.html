@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Todos{% endblock %}
+{% block content %}
+<section class="card">
+  <h2>Add Todo</h2>
+  <form action="{{ url_for('add_todo') }}" method="post" class="todo-form">
+    <label>
+      Title
+      <input type="text" name="title" placeholder="Ship secure containers" required>
+    </label>
+    <label>
+      Description
+      <textarea name="description" rows="3" placeholder="Optional details"></textarea>
+    </label>
+    <button type="submit">Add</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Todos</h2>
+  {% if todos %}
+    <ul class="todo-list">
+      {% for todo in todos %}
+        <li class="todo-item {% if todo.completed %}done{% endif %}">
+          <div>
+            <strong>{{ todo.title }}</strong>
+            {% if todo.description %}
+              <p>{{ todo.description }}</p>
+            {% endif %}
+            <small>Created {{ todo.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</small>
+          </div>
+          <div class="actions">
+            <form action="{{ url_for('toggle_todo', todo_id=todo.id) }}" method="post">
+              <button type="submit">{% if todo.completed %}Mark Incomplete{% else %}Mark Complete{% endif %}</button>
+            </form>
+            <form action="{{ url_for('delete_todo', todo_id=todo.id) }}" method="post">
+              <button type="submit" class="danger">Delete</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No todos yet.</p>
+  {% endif %}
+</section>
+{% endblock %}
