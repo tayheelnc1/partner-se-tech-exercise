@@ -1,0 +1,9 @@
+services:
+  web:
+    volumes:
+      - ./app:/app
+    command: ["--bind", "0.0.0.0:8000", "--reload", "app:app"]
+
+  db:
+    ports:
+      - "5432:5432"

@@ -1,22 +1,39 @@
-FROM python:3.11-slim
+# syntax=docker/dockerfile:1
+
+# ---- build stage ----
+FROM cgr.dev/chainguard/python:latest-dev AS build
+
+USER root
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    vim \
-    netcat-traditional \
-    && rm -rf /var/lib/apt/lists/*
+COPY requirements.txt .
 
-COPY . /app
+RUN python -m venv --copies /opt/venv
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=secret,id=cg_username \
+    --mount=type=secret,id=cg_password \
+    USERNAME=$(sed 's|/|%2F|g' /run/secrets/cg_username) && \
+    PASSWORD=$(cat /run/secrets/cg_password) && \
+    /opt/venv/bin/pip install --no-cache-dir \
+      --index-url "https://${USERNAME}:${PASSWORD}@libraries.cgr.dev/python/simple/" \
+      -r requirements.txt
 
-ENV FLASK_APP=app.py
-ENV FLASK_ENV=development
+# ---- runtime stage ----
+FROM cgr.dev/chainguard/python:latest
+
+COPY --from=build --chown=nonroot:nonroot /opt/venv /opt/venv
+
+WORKDIR /app
+COPY --chown=nonroot:nonroot . .
+
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PATH="/opt/venv/bin:$PATH"
+
+USER nonroot
 
 EXPOSE 8000
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/opt/venv/bin/gunicorn"]
+CMD ["--bind", "0.0.0.0:8000", "--workers", "2", "app:app"]
